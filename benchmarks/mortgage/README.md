@@ -13,13 +13,13 @@ The Mortgage workflow is composed of three core phases:
 3. ML - Training
 
 ### ETL
-Data is 
+Data is: 
 1. Read in from storage
 2. Transformed to emphasize key features
 3. Loaded into volatile memory for conversion
 
 ### Data Conversion
-Features are
+Features are:
 1. Broken into (labels, data) pairs
 2. Distributed across many workers
 3. Converted into compressed sparse row (CSR) matrix format for XGBoost
