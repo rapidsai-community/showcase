@@ -1,0 +1,26 @@
+# name: cudf_dev10.2
+channels:
+- rapidsai
+- rapidsai-nightly
+- nvidia
+- pyviz
+- conda-forge
+- plotly
+- anaconda
+dependencies:
+- cuxfilter>=0.16.0a201007
+- cuspatial=0.16
+- cugraph=0.16
+- cudatoolkit=10.2
+- python>=3.6,<3.8
+- plotly>=4.5
+- dash-core-components
+- dash-html-components
+- jupyter-dash
+- jupyterlab
+- jupyter-server-proxy>=1.5.0
+- holoviews
+- hvplot
+- geoviews
+- cartopy
+- networkx
