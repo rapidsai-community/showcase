@@ -107,9 +107,10 @@ def describe_data_g_targ(dat, target_var, logbase=cupy.e):
     assert n_ctrl + n_targ == num
     base_rate = n_targ/num
     base_odds = n_targ/n_ctrl
-    lbm = cupy.float(1/cupy.log(logbase))
-    base_log_odds = cupy.log(base_odds) * lbm
-    NLL_null = -(dat[target_var] * np.log(base_rate)*lbm + (1-dat[target_var]) * np.log(1-base_rate)*lbm).sum()
+    lbm = 1/cupy.log(logbase)
+    base_log_odds = cupy.log(base_odds) * lbm    
+    NLL_null = -(cupy.asarray(dat[target_var]) * cupy.log(base_rate) * lbm + cupy.asarray(1-dat[target_var]) * 
+                 cupy.log(1-base_rate)*lbm).sum()
     LogLoss_null = NLL_null/num
     min_bin_ct = cupy.ceil(1/base_rate).astype(int)
     
