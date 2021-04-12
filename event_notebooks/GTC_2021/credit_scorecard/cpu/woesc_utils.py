@@ -1,8 +1,7 @@
+#!/usr/bin/env python
 # coding: utf-8
 
-# ## Utility functions for weight of evidence scorecarding
-
-# In[ ]:
+## Utility functions for weight of evidence scorecarding
 
 
 import numpy as np
@@ -23,72 +22,6 @@ plt.rcParams['axes.axisbelow'] = True
 plt.rcParams['grid.color'] = '.8'
 
 
-def preprocess_vehicle_data(dataset, id_vars, targ_var):
-    ## Sort data by unique client identifier
-    dataset.sort_values(id_vars, inplace=True)
-    dataset.reset_index(drop=True, inplace=True)
-
-    ## Make the target variable the second column in the dataframe
-    targets = dataset.pop(targ_var)
-    dataset.insert(1, targ_var, targets)
-
-    ## Replace periods in variable names with underscores 
-    new_cols = [sub.replace('.', '_') for sub in dataset.columns] 
-    dataset.rename( columns=dict(zip(dataset.columns, new_cols)), inplace=True)
-
-    ## Specify variables that should be treated as categorical and convert them to character strings (non-numeric)
-    cat_vars = [ 'branch_id', 'supplier_id', 'manufacturer_id', 'Current_pincode_ID', 'State_ID', 'Employee_code_ID'
-                , 'Aadhar_flag', 'PAN_flag', 'VoterID_flag', 'Driving_flag', 'Passport_flag']
-    dataset[cat_vars] = dataset[cat_vars].fillna('')
-    dataset[cat_vars] = dataset[cat_vars].applymap(str)
-
-    ## Strategically add some missing data 
-    ## Note: There is no bureau data for more than half of the records
-    no_bureau = (dataset.PERFORM_CNS_SCORE_DESCRIPTION == 'No Bureau History Available')
-    dataset.loc[no_bureau, 'PERFORM_CNS_SCORE_DESCRIPTION'] = ''
-    bureau_vars = [ 'PERFORM_CNS_SCORE', 'PRI_NO_OF_ACCTS', 'PRI_ACTIVE_ACCTS', 'PRI_OVERDUE_ACCTS'
-                   , 'PRI_CURRENT_BALANCE', 'PRI_SANCTIONED_AMOUNT', 'PRI_DISBURSED_AMOUNT', 'PRIMARY_INSTAL_AMT']
-    dataset.loc[no_bureau, bureau_vars] = np.nan
-
-    ## The 'Credit Score' variable PERFORM_CNS_SCORE has some issues and could use some additional feature engineering.
-    ## The values of 300, 738, and 825 are over-represented in the data (300 should be at the end of the distribution)
-    ## The values 11,14-18 are clearly 'Not Scored' codes - setting to missing for demo
-    # dataset.PERFORM_CNS_SCORE.value_counts()
-    # dataset.PERFORM_CNS_SCORE_DESCRIPTION.value_counts().sort_index()
-    # pd.crosstab(dataset.PERFORM_CNS_SCORE_DESCRIPTION, dataset.PERFORM_CNS_SCORE, margins=True)
-    dataset.loc[dataset.PERFORM_CNS_SCORE < 20, 'PERFORM_CNS_SCORE'] = np.nan
-
-    ## Make all date calculation relative to January 2019 when this dataset was created.
-    t_0 = pd.to_datetime('201901', format='%Y%m')
-    dataset['DoB'] = pd.to_datetime(dataset['Date_of_Birth'], format='%d-%m-%y', errors='coerce')
-    dataset['DoB'] = dataset['DoB'].mask( dataset['DoB'].dt.year > t_0.year
-                                        , dataset['DoB'] - pd.offsets.DateOffset(years=100))
-    dataset['AgeInMonths'] = (t_0 - dataset.DoB).astype('timedelta64[M]')
-
-    dataset['DaysSinceDisbursement'] = (t_0 - pd.to_datetime(dataset.DisbursalDate, format='%d-%m-%y')
-                                       ).astype('timedelta64[D]')
-
-    def timestr_to_mths(timestr):
-        '''timestr formatted as 'Xyrs Ymon' '''
-        year = int(timestr.split()[0].split('y')[0]) 
-        mo = int(timestr.split()[1].split('m')[0])
-        num = year*12 + mo
-        return(num)
-
-    dataset['AcctAgeInMonths'] = dataset['AVERAGE_ACCT_AGE'].apply(lambda x: timestr_to_mths(x))
-    dataset['CreditHistLenInMonths'] = dataset["CREDIT_HISTORY_LENGTH"].apply(lambda x: timestr_to_mths(x))
-
-    dat = dataset.drop(columns=['Date_of_Birth', 'DoB', 'AVERAGE_ACCT_AGE', 'CREDIT_HISTORY_LENGTH'
-                          , 'MobileNo_Avl_Flag', 'DisbursalDate'] )
-    dat[targ_var] = dat[targ_var].astype(int)
-
-    # ## Can drop records with no credit history - just to trim the data (justifiable in scenarios where
-    # ## no_credit_bureau leads to an auto-decline or initiates a separate adjudication process)
-    # dat = dat.loc[(~no_bureau | (dat.SEC_NO_OF_ACCTS != 0)), :]
-    
-    return dat
-
-
 def inv_logit(x, logbase=None):
     """Inverse logit function (expit from scipy equivalent to logbase=np.e)"""
     if not logbase:
@@ -97,22 +30,34 @@ def inv_logit(x, logbase=None):
         return 1.0 / ( 1.0 + logbase**(-x) )
 
 
-# In[ ]:
-
-
-def describe_data_g_targ(dat, target_var, logbase=np.e):
-    """ """
-    num = dat.shape[0]
-    n_targ = sum(dat[target_var]==1)
-    n_ctrl = sum(dat[target_var]==0)
+def describe_data_g_targ(dat_df, target_var, logbase=np.e):
+    """Describe the data given a target variable
+    
+    Parameters
+    ----------
+    dat_df : DataFrame
+        A dataframe that contains the target variable 
+    target_var : string
+        The model target variable, corresponding to a binary variable in dat_df
+    logbase : int, float, optional (default=np.e) 
+        The base for logarithm functions used to compute log-odds - default is natural log (ln = log_e)
+    
+    Returns
+    -------
+    Dict
+        A dictionary containing calculated values
+    """
+    num = dat_df.shape[0]
+    n_targ = (dat_df[target_var]==1).sum()
+    n_ctrl = (dat_df[target_var]==0).sum()
     assert n_ctrl + n_targ == num
     base_rate = n_targ/num
     base_odds = n_targ/n_ctrl
     lbm = 1/np.log(logbase)
     base_log_odds = np.log(base_odds) * lbm
-    NLL_null = -sum(dat[target_var] * np.log(base_rate)*lbm + (1-dat[target_var]) * np.log(1-base_rate)*lbm)
+    NLL_null = -(dat_df[target_var] * np.log(base_rate)*lbm 
+                + (1-dat_df[target_var]) * np.log(1-base_rate)*lbm).sum()
     LogLoss_null = NLL_null/num
-    min_bin_ct = np.ceil(1/base_rate).astype(int)
     
     print("Number of records (num):", num)
     print("Target count (n_targ):", n_targ)
@@ -121,14 +66,9 @@ def describe_data_g_targ(dat, target_var, logbase=np.e):
     print("Target log odds (base_log_odds):", base_log_odds)
     print("Dummy model negative log-likelihood (NLL_null):", NLL_null)
     print("Dummy model LogLoss (LogLoss_null):", LogLoss_null)
-    # print("Minimum suggested bin size:", min_bin_ct)
     print("")
     return {'num':num, 'n_targ':n_targ , 'base_rate':base_rate, 'base_odds':base_odds
-           , 'base_log_odds':base_log_odds, 'NLL_null':NLL_null, 'LogLoss_null':LogLoss_null 
-           , 'min_bin_ct':min_bin_ct }
-
-
-# In[ ]:
+           , 'base_log_odds':base_log_odds, 'NLL_null':NLL_null, 'LogLoss_null':LogLoss_null }
 
 
 def get_numeric_cutpoints( notmiss_df, n_cuts=2, binner='qntl', min_bin_size=100 ):
@@ -167,8 +107,6 @@ def get_numeric_cutpoints( notmiss_df, n_cuts=2, binner='qntl', min_bin_size=100
         leafmask = (tree0.feature != -2)
         prog_cuts = pd.Series(tree0.threshold[leafmask], index=tree0.children_left[leafmask]).sort_index()
         var_cuts_w_min = pd.concat([pd.Series(notmiss_df[p_var].min()), prog_cuts])
-        print(var_cuts_w_min)
-        print('hello')
     elif (binner == 'unif'):
         bin_edges = np.linspace(notmiss_df[p_var].min(), notmiss_df[p_var].max(), n_cuts+1)
         var_cuts_w_min = pd.Series(bin_edges[:-1])
@@ -180,9 +118,6 @@ def get_numeric_cutpoints( notmiss_df, n_cuts=2, binner='qntl', min_bin_size=100
         var_cuts_w_min = notmiss_df[p_var].quantile(np.arange(0, 1, 1/np.where(n_cuts<1, 1, n_cuts)))       
         
     return(var_cuts_w_min.round(12), binner)
-
-
-# In[ ]:
 
 
 def get_categories( notmiss_df, n_cats=2, binner=None, min_bin_size=100 ):
@@ -213,8 +148,8 @@ def get_categories( notmiss_df, n_cats=2, binner=None, min_bin_size=100 ):
     targ_var, p_var, *_ =  notmiss_df.columns
     
     var_cts = notmiss_df[p_var].value_counts() 
-    small_cats = var_cts[var_cts < min_bin_size].index.to_list()
-    low_rank_cats = var_cts[(n_cats-1):].index.to_list()
+    small_cats = var_cts[var_cts < min_bin_size].index.tolist()
+    low_rank_cats = var_cts[(n_cats-1):].index.tolist()
     
     if (len(low_rank_cats) <= len(small_cats)) or (len(low_rank_cats) <= 1):
         binner = 'none' 
@@ -240,9 +175,6 @@ def get_categories( notmiss_df, n_cats=2, binner=None, min_bin_size=100 ):
     return(incl_cats, binner)
 
 
-# In[ ]:
-
-
 def get_bin_edges( dat_df, n_cuts, binner='qntl', min_bin_size=100, correct_cardinality=True ):
     """Function to generate bins from a 'binner' algorithm 
     
@@ -259,7 +191,7 @@ def get_bin_edges( dat_df, n_cuts, binner='qntl', min_bin_size=100, correct_card
         - If 'entropy', then information gain criterion for split quality is used 
     min_bin_size : int, optional (default=100)
         Minimum count required in each bin generated by the 'binner' algorithm
-    correct_cardinality: bool, optional (default=True)
+    correct_cardinality : bool, optional (default=True)
          Toggle that attempts to correct for the fact that when min_bin_size > 1 the effective cardinality 
          when binning numeric variables is lower than the actual cardinality.
     
@@ -325,9 +257,6 @@ def get_bin_edges( dat_df, n_cuts, binner='qntl', min_bin_size=100, correct_card
     return(bin_edges, binner)
 
 
-# In[ ]:
-
-
 def gen_uwoesc_df( dat_df, bin_edges, binner=None, n_cuts=None, min_bin_size=100, laplace=1, laplaceY0='brc'
                   , compute_stats=False, neutralizeMissing=False, neutralizeSmBins=True, logbase=np.e ):
     """Function that generates a univariate WOE dataframe given a dataset and bin specification.
@@ -354,13 +283,13 @@ def gen_uwoesc_df( dat_df, bin_edges, binner=None, n_cuts=None, min_bin_size=100
         - If 'bal' or balanced, then laplace parameter is used
         - If 'brc' or base rate corrected, then laplace parameter divided by base_odds is used. Makes additive
             smoothing respect the prior/base rate of the target in the dataset.
-    logbase: int, float, optional (default=np.e) 
+    logbase : int, float, optional (default=np.e) 
         The base for logarithm functions used to compute log-odds - default is natural log (ln = log_e)
-    compute_stats: bool, optional (default=False)
+    compute_stats : bool, optional (default=False)
         Toggle for computing stats - KL divergences (relative entropies), IVs, bin prediction, etc.
-    neutralizeMissing: bool, optional (default=False)
+    neutralizeMissing : bool, optional (default=False)
         Toggle to set WOE values for missing value bins equal to zero
-    neutralizeSmBins: bool, optional (default=True)
+    neutralizeSmBins : bool, optional (default=True)
         Toggle that sets WOE values to zero when the bin count is less than min_bin_size. Generating bins with 
         counts less than min_bin_size is uncommon, but does occur (e.g., missing bins, quantile bins next to bins 
         with numerous ties, etc.)
@@ -429,19 +358,19 @@ def gen_uwoesc_df( dat_df, bin_edges, binner=None, n_cuts=None, min_bin_size=100
 
         srtd_bin_edges = bin_edges.sort_values()
         var_cuts_w_range = np.append(srtd_bin_edges.drop_duplicates().values, np.inf)
-        notmiss_df['bin'] = pd.cut(notmiss_df[p_var], var_cuts_w_range, right=False) 
+        notmiss_df['bin'] = pd.cut(notmiss_df[p_var], var_cuts_w_range, right=False)
         dfgb = notmiss_df.groupby('bin', as_index=True)
-        WOE_df['bin_ct'] = dfgb[targ_var].count()        
+        WOE_df['bin_ct'] = dfgb[targ_var].count()
         WOE_df['bin_min'] = var_cuts_w_range[:-1]  ## Drop max value 
         ranks_min = srtd_bin_edges.rank(method='min').drop_duplicates().values
         ranks_max = srtd_bin_edges.rank(method='max').drop_duplicates().values
         WOE_df['ranks'] = [(x1, x2) for x1,x2 in zip(ranks_min, ranks_max)]
 
     WOE_df['Y1'] = dfgb[targ_var].sum(min_count=0)
-    WOE_df['Y1'] = WOE_df['Y1'].fillna(0).astype(int) 
+    WOE_df['Y1'] = WOE_df['Y1'].fillna(0).astype(int)
     WOE_df.sort_values(by=['ranks','Y1'], ascending=[True,False], inplace=True)
     missing_row = pd.DataFrame([[missing_df[targ_var].count(), missing_value, 0, missing_df[targ_var].sum()]]
-                               , columns=WOE_df.columns, index=pd.Index(['.'], name='bin')) 
+                               , columns=WOE_df.columns, index=pd.Index(['.'], name='bin'))
     WOE_df = pd.concat([missing_row, WOE_df])
     WOE_df['Y0'] = WOE_df.bin_ct - WOE_df.Y1
     WOE_df['bin_pct'] = WOE_df.bin_ct / WOE_df.bin_ct.sum()
@@ -465,7 +394,7 @@ def gen_uwoesc_df( dat_df, bin_edges, binner=None, n_cuts=None, min_bin_size=100
 
     WOE_df['p_XgY1'] = Y1_ct / Y1_ct.sum()
     WOE_df['p_XgY0'] = Y0_ct / Y0_ct.sum()
-    WOE_df['WOE'] = np.log(WOE_df.p_XgY1 / WOE_df.p_XgY0).fillna(0)*lbm  
+    WOE_df['WOE'] = np.log(WOE_df.p_XgY1 / WOE_df.p_XgY0).fillna(0)*lbm     
 
     if neutralizeSmBins: 
         WOE_df.loc[WOE_df.bin_ct < min_bin_size, 'WOE'] = 0.0
@@ -495,9 +424,6 @@ def gen_uwoesc_df( dat_df, bin_edges, binner=None, n_cuts=None, min_bin_size=100
     return(WOE_df)
 
 
-# In[ ]:
-
-
 def gen_woe_df( dat_df, p_var, targ_var, n_cuts=2, laplace=1, min_bin_size=100, binner='qntl'
                 , laplaceY0='brc', compute_stats=False, neutralizeMissing=False, neutralizeSmBins=True
                 , correct_cardinality=True, logbase=np.e ):
@@ -510,7 +436,7 @@ def gen_woe_df( dat_df, p_var, targ_var, n_cuts=2, laplace=1, min_bin_size=100, 
     p_var : string
         The predictor variable.
     targ_var : string
-        The model target variable, corresponding to a binary variable in dat.
+        The model target variable, corresponding to a binary variable in dat_df.
     n_cuts : int, optional (default=2)
         The number of data splits (generally creates n_cuts+1 bins)
     laplace : int, float, optional (default=1)
@@ -529,18 +455,18 @@ def gen_woe_df( dat_df, p_var, targ_var, n_cuts=2, laplace=1, min_bin_size=100, 
         - If 'bal' or balanced, then laplace parameter is used
         - If 'brc' or base rate corrected, then laplace parameter divided by base_odds is used. Makes additive
             smoothing respect the prior/base rate of the target in the dataset.
-    compute_stats: bool, optional (default=False)
+    compute_stats : bool, optional (default=False)
         Toggle for computing stats - KL divergences (relative entropies), IVs, bin prediction, etc.
-    neutralizeMissing: bool, optional (default=False)
+    neutralizeMissing : bool, optional (default=False)
         Toggle to set WOE values for missing value bins equal to zero
-    neutralizeSmBins: bool, optional (default=True)
+    neutralizeSmBins : bool, optional (default=True)
         Toggle that sets WOE values to zero when the bin count is less than min_bin_size. Generating bins with 
         counts less than min_bin_size is uncommon, but does occur (e.g., missing bins, quantile bins next to bins 
         with numerous ties, etc.)
-    correct_cardinality: bool, optional (default=True)
+    correct_cardinality : bool, optional (default=True)
          Toggle that attempts to correct for the fact that when min_bin_size > 1 the effective cardinality 
          when binning numeric variables is lower than the actual cardinality.
-    logbase: int, float, optional (default=np.e) 
+    logbase : int, float, optional (default=np.e) 
         The base for logarithm functions used to compute log-odds - default is natural log (ln = log_e)
     
     Returns
@@ -553,9 +479,6 @@ def gen_woe_df( dat_df, p_var, targ_var, n_cuts=2, laplace=1, min_bin_size=100, 
     WOE_df = gen_uwoesc_df( dat_df, bin_edges, binner, n_cuts, min_bin_size, laplace, laplaceY0
                           , compute_stats, neutralizeMissing, neutralizeSmBins, logbase )
     return(WOE_df)
-
-
-# In[ ]:
 
 
 def woe_score_var( dat, WOE_df, return_only_WOE=True ):
@@ -580,15 +503,10 @@ def woe_score_var( dat, WOE_df, return_only_WOE=True ):
     
     p_var = WOE_df.index.get_level_values('var_name')[0]
     
-    if not isinstance(WOE_df.bin_min[1], set):     
-        cutpoints = list(WOE_df.bin_min.dropna()) + [np.inf]
-        if wdat[p_var].min() < cutpoints[0]:
-            cutpoints[0] = wdat[p_var].min()
-        wdat['bin_idx'] = (pd.cut(wdat[p_var], bins=cutpoints, labels=False, right=False)+1).fillna(0).astype(int)
-    else: 
-        wdat[p_var].fillna('', inplace=True)
-        wdat[p_var] = wdat[p_var].astype(str).str.strip().astype('category')
-        wdat_cats0 = wdat[p_var].cat.categories  # .astype(str)
+    if isinstance(WOE_df.bin_min[1], set):     
+        wdat[p_var].fillna('', inplace=True)     
+        wdat[p_var] = wdat[p_var].astype(str).str.strip()
+        wdat_cats0 = wdat[p_var].astype('category').cat.categories
 
         cat_sets = WOE_df.bin_min.tolist() # [:-1]
         sets_series = pd.Series(cat_sets).astype(str)
@@ -609,12 +527,20 @@ def woe_score_var( dat, WOE_df, return_only_WOE=True ):
 
         wdat[p_var] = wdat[p_var].map(cat2set_dict).astype(str).astype('category')
         wdat_cats1 = wdat[p_var].cat.categories
+        # print("Data categories after replacement:", wdat_cats1)
 
         if any(~sets_series.isin(wdat_cats1)):   
             wdat[p_var].cat.add_categories(sets_series[~sets_series.isin(wdat_cats1)].values, inplace=True)
+        # print("Data categories final:", wdat[p_var].cat.categories)
 
         wdat[p_var].cat.reorder_categories(sets_series, inplace=True)
         wdat['bin_idx'] = wdat[p_var].cat.codes
+    else:
+        cutpoints = list(WOE_df.bin_min.dropna()) + [np.inf]
+        if wdat[p_var].min() < cutpoints[0]:
+            cutpoints[0] = wdat[p_var].min()
+        wdat['bin_idx'] = (pd.cut(wdat[p_var], bins=cutpoints, labels=False, right=False)+1).fillna(0).astype(int)
+     
         
     bin2WOE = WOE_df[['WOE']].rename(columns={'WOE': 'WOE_'+p_var}).reset_index(
                 level=['var_name','req_cuts','binner','bins'], drop=True)
@@ -625,11 +551,6 @@ def woe_score_var( dat, WOE_df, return_only_WOE=True ):
     else:
         return(wdat)
 
-
-# In[ ]:
-
-
-## The first function here can be made more efficient by reusing cutpoints for tree binners...
 
 def gen_var_woe_dfs(p_var, inc_n_cuts, binner, dat, targ_var, **kwargs ):
     """Helper function run in each dask instance
@@ -644,7 +565,7 @@ def gen_var_woe_dfs(p_var, inc_n_cuts, binner, dat, targ_var, **kwargs ):
     return(WOE_dfs)
 
 def create_woesc_df( inc_p_vars, inc_n_cuts, inc_bnrs, dat_df, targ_var, **kwargs ):
-    """Create a set of WOE scorecards
+    """Create a set of WOE scorecards - outer-product of included predictive variables, # of cuts, and binners 
     
     Parameters
     ----------
@@ -689,9 +610,6 @@ def create_woesc_df( inc_p_vars, inc_n_cuts, inc_bnrs, dat_df, targ_var, **kwarg
     return(mdf)
 
 
-# In[ ]:
-
-
 def gen_uscm_df(mdf):
     """Generate a univariate scorecards metrics dataframe from a univariate scorecards dataframe
     
@@ -728,12 +646,10 @@ def gen_uscm_df(mdf):
     return(MM_df)
 
 
-# In[ ]:
-
-
 def uwoesc_plot( WOE_df, targ_label, sort_values=False, var_scale='def', top_n=None, sep_bar=False
                        , textsize=9, figsize=(8.2, 4)):
     """Create a plot of a univariate scorecard using a WOE_df object.
+
     """   
     p_var = WOE_df.index[0][0]
     compute_stats = 'IV' in WOE_df.columns
@@ -837,6 +753,7 @@ def uwoesc_plot( WOE_df, targ_label, sort_values=False, var_scale='def', top_n=N
     plt.show()
     return(WOE_df)
 
+
 def univariate_sc_plot( dat_df, p_var, targ_var, n_cuts=2, laplace=1, min_bin_size=1, binner='qntl'
                        , compute_stats=True, sort_values=False, var_scale='def', top_n=None, sep_bar=False
                        , textsize=9, figsize=(8.2, 4), **kwargs):
@@ -849,9 +766,6 @@ def univariate_sc_plot( dat_df, p_var, targ_var, n_cuts=2, laplace=1, min_bin_si
                        , top_n=top_n, sep_bar=sep_bar, textsize=textsize, figsize=figsize)
 
 
-# In[ ]:
-
-
 def woesc_plot(WOE_df, compute_stats=True, sort_values=False, orig_scale=False, logbase=np.e, figsize=(5, 3)):
     """Make a weight of evidence plot.
     """   
@@ -862,10 +776,10 @@ def woesc_plot(WOE_df, compute_stats=True, sort_values=False, orig_scale=False, 
     n_bins = WOE_df.index.get_level_values('bins')[0]
 
     fig, axs = plt.subplots(1, 1, figsize=figsize)
-    axs.axhline(0, color='.7', lw=2.5)
+    axs.axhline(0, color='.6', lw=2)
     xticks = np.arange(0, len(WOE_df.WOE))
-    ave_bin_width = 1 
-    woeCol = 'purple' # '#7849B8'
+    ave_bin_width = 1
+    woeCol = 'purple' # '#7849B8' 
     woeAlpha = .6
     
     if isinstance(WOE_df.bin_min[1], set):
@@ -874,7 +788,7 @@ def woesc_plot(WOE_df, compute_stats=True, sort_values=False, orig_scale=False, 
             WOE_df = pd.concat([WOE_df[~mask].sort_values('bin', na_position='first'), WOE_df[mask]])
         xlabel = "bin category"
         xticklabels = WOE_df.bin
-        barwidth = .8
+        barwidth = .8 
         xticks = xticks[:-1]
         axs.bar(xticks, WOE_df.WOE[1:], width=barwidth, ec=mpl_colors.to_rgb(woeCol)+(woeAlpha,), fill=False
                 , label="WOE")
@@ -920,9 +834,6 @@ def woesc_plot(WOE_df, compute_stats=True, sort_values=False, orig_scale=False, 
     plt.legend(bbox_to_anchor=(1, 0), loc='lower left')
     plt.show()
     return(WOE_df)
-
-
-# In[ ]:
 
 
 def add_scorecard_points(scdf, PDO=20, standardSc_pts=600, standardSc_odds=19, pts_dec_prec=1, trndict=None):
@@ -985,13 +896,9 @@ def add_scorecard_points(scdf, PDO=20, standardSc_pts=600, standardSc_odds=19, p
     return pointscard
 
 
-# In[ ]:
-
-
 ## Prototype code for a univariate scorecard scikit-learn estimator
-
 class uwoesc(BaseEstimator, TransformerMixin, ClassifierMixin):
-    def __init__(self, n_cuts=2, binner='qntl', min_bin_size=100, laplace=1
+    def __init__(self, var_name='', n_cuts=2, binner='qntl', min_bin_size=100, laplace=1
                 , laplaceY0='brc', compute_stats=False, neutralizeMissing=False, neutralizeSmBins=True
                 , correct_cardinality=True ):
         """Univariate Weight of evidence scorecard object.
@@ -1006,16 +913,22 @@ class uwoesc(BaseEstimator, TransformerMixin, ClassifierMixin):
         self.neutralizeSmBins = neutralizeSmBins
         self.correct_cardinality = correct_cardinality
         
-        self.var_name = ''
+        self.var_name = var_name
         self.targ_var = ''
         self.base_odds = 1
         self.WOE_df = pd.DataFrame()
         self.bin_edges = []
 
-    def fit(self, X, y, var_name):
+    def fit(self, X, y, var_name=None):
         """ Fit function  
         """
-        self.var_name = var_name
+        if var_name:
+            self.var_name = var_name 
+            
+        if isinstance(y, (np.ndarray, list)):
+            y = pd.DataFrame(y, index=X.index, columns=['target']) 
+        if isinstance(y, pd.core.series.Series):
+            y = y.to_frame()
         self.targ_var = y.columns[0]
         self.base_odds = (np.sum(y==1) / np.sum(y==0))[0]
         
@@ -1043,10 +956,11 @@ class uwoesc(BaseEstimator, TransformerMixin, ClassifierMixin):
         """
         return uwoesc_plot(self.WOE_df, self.targ_var, **kwargs)
     
-    def custom(self, X, y, bin_edges, var_name ):
+    def custom_fit(self, X, y, bin_edges, var_name=None ):
         """ Custom binning fit function        
         """
-        self.var_name = var_name
+        if var_name:
+            self.var_name = var_name
         self.targ_var = y.columns[0]
         self.bin_edges = bin_edges
         self.binner = 'custom'
@@ -1058,4 +972,3 @@ class uwoesc(BaseEstimator, TransformerMixin, ClassifierMixin):
                                     , self.laplace, self.laplaceY0, self.compute_stats
                                     , self.neutralizeMissing, self.neutralizeSmBins )
         return(self.WOE_df)
-
