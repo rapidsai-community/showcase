@@ -9,8 +9,8 @@ import urllib
 # Global variables
 
 # Links to mortgage data files
-MORTGAGE_YEARLY_1GB_SPLITS_URL = "https://rapidsai-data.s3.us-east-2.amazonaws.com/notebook-mortgage-data/mortgage_yearly/"
-MORTGAGE_YEARLY_2GB_SPLITS_URL = "https://rapidsai-data.s3.us-east-2.amazonaws.com/notebook-mortgage-data/mortgage_yearly_2gb/"
+MORTGAGE_YEARLY_1GB_SPLITS_URL = "https://data.rapids.ai/notebook-mortgage-data/mortgage_yearly/"
+MORTGAGE_YEARLY_2GB_SPLITS_URL = "https://data.rapids.ai/notebook-mortgage-data/mortgage_yearly_2gb/"
 
 
 def get_data(data_dir, start_year, end_year, use_1GB_splits):

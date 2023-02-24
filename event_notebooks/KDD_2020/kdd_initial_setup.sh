@@ -12,8 +12,8 @@ echo "** Installing cyBERT requirements                             **"
 echo "****************************************************************"
 pip install torch torchvision
 pip install transformers
+pip install requests
 pip install seqeval
-pip install s3fs
 
 echo ""
 echo "****************************************************************"
