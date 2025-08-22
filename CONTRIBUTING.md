@@ -17,7 +17,7 @@ Ways to contribute to the `rapidsai-community/showcase` repo fall into the follo
 
   **3. I want to Propose and create a new notebook/tutorial/walk through** (Only done by RAPIDS Team Members and NVIDIA Employees) 
 
-For #1, please look at the [Creating an Issue](creating-an-issue) section, which you should do before doing #2 and #3.
+For #1, please look at the [Creating an Issue](#creating-an-issue) section, which you should do before doing #2 and #3.
 
 For #2 and #3, please look at the [Code Contributions](#code-contributions) section.
 
@@ -37,7 +37,7 @@ comment on the issue to notify the team.
 To propose and implement a new notebook, please file a new feature request [issue](https://github.com/rapidsai-community/showcase/issues/new/choose)
 - Describe the intended feature and discuss the design & implementation with the community
 - Once the team agrees that the plan looks good, implement it using the [code contributions](#code-contributions) guide below
-- Test your notebook using our [testing guide](TESTING.md)!
+- Don't forget to test your notebook!
 
 ## Code Contributions
 In Showcase, Code Contributions are only for members of the RAPIDS team or NVIDIA employees.  If you are not part of NVIDIA, don't worry, that's what [Notebooks Contrib](https://github.com/rapidsai-community/notebooks-contrib) is for!  Please contribute your Notebook there, [following this guide](https://github.com/rapidsai-community/notebooks-contrib?tab=readme-ov-file#contributing). In both cases, your help is appreciated!
