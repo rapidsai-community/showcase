@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 # This script sets up the RAPIDS nightly container for the KDD 2020 hands-on tutorial
 
 echo "****************************************************************"
