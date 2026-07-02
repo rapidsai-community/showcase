@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
+# SPDX-FileCopyrightText: Copyright (c) <year> NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 
 ## Utility functions for weight of evidence scorecarding
 

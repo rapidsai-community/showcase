@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) <year> NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from .core.gis import (
    directed_hausdorff_distance,
     haversine_distance,

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) <year> NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from pyproj import Proj, Transformer
 
 def transform_coords(df, x='x', y='y'):
