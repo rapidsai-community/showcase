@@ -7,7 +7,7 @@ Thanks for wanting to contribute to the RAPIDS Community Showcase.  As you may k
 - Useful and relevant tutorials
 - Highly impactful "best practices" walkthroughs.
 
-Examples of the types of notebooks that go here are notebooks supporting blog posts or conferences, which should be kept up to date for a couple of releases. There is an expectation of maintentance support by you, the contributor. 
+Examples of the types of notebooks that go here are notebooks supporting blog posts or conferences, which should be kept up to date for a couple of releases. There is an expectation of maintentance support by you, the contributor.
 
 Ways to contribute to the `rapidsai-community/showcase` repo fall into the following 3 categories:
 
@@ -15,7 +15,7 @@ Ways to contribute to the `rapidsai-community/showcase` repo fall into the follo
 
   **2. I want to Implement a bug fix or satisfy a feature request** (Only done by Notebook Maintainers)
 
-  **3. I want to Propose and create a new notebook/tutorial/walk through** (Only done by RAPIDS Team Members and NVIDIA Employees) 
+  **3. I want to Propose and create a new notebook/tutorial/walk through** (Only done by RAPIDS Team Members and NVIDIA Employees)
 
 For #1, please look at the [Creating an Issue](#creating-an-issue) section, which you should do before doing #2 and #3.
 
@@ -64,7 +64,7 @@ git checkout -b my-new-feature-branch
 #### Requirements When Creating a Notebook
 
 **Starting Considerations**
-- The Notebook must be complete code that will stand on it's own. Please, no code snippets or code gaps in the flow of work neccessary to execute the notebook.  This includes any out of notebook work, like getting datasets, environment variables, library installation, and other necessary code/commands. 
+- The Notebook must be complete code that will stand on it's own. Please, no code snippets or code gaps in the flow of work neccessary to execute the notebook.  This includes any out of notebook work, like getting datasets, environment variables, library installation, and other necessary code/commands.
 - The Notebook must have prose to help situate a person.  Write as if for a student or novice.  Provide links to clarifying sources if necessary.  For Example:
    - [Example Notebook 1](https://github.com/rapidsai/cuml/blob/branch-25.10/notebooks/arima_demo.ipynb) - Standard
    - [Example Notebook 2](https://github.com/rapidsai/cugraph/blob/branch-25.10/notebooks/algorithms/community/Louvain.ipynb) – In depth
@@ -76,7 +76,7 @@ git checkout -b my-new-feature-branch
 
 **Other Considerations**
 - If the notebook requires other files (eg: *.py, *.sh, data files, etc), please put the notebook and all associated files in its own folder, which will be a subfolder of its home folder.  The folder will also require a README.md file which will outline the files and explain how to use them together.
-- If creating a notebook that can be tested during release, 
+- If creating a notebook that can be tested during release,
   - Only `RAPIDS Stable Based` notebooks will be routinely tested.
   - in order to be testable, the notebook cannot make breaking changes to the RAPIDS install or the docker container (no pinned RAPIDS versions or supporting libraries)
 - Please do not add forced restarts, such as `get_ipython().kernel.do_shutdown(restart=True)`, even for Colab Notebooks.  We have an alternate way to reset libraries for zero code change examples.
@@ -119,3 +119,57 @@ As Showcase Notebooks have a short Active Lifespan, notebooks that are no longer
 Please reach out to us, if you are no longer able to Maintain your notebook or think i's time to transition it.  Outside of that the RAPIDS Community team will reach out to you.
 
 Thank you again for your contribution!
+
+#### Signing Your Work
+
+* We require that all contributors "sign-off" on their commits. This certifies that the contribution is your original work, or you have rights to submit it under the same license, or a compatible license.
+
+  * Any contribution which contains commits that are not Signed-Off will not be accepted.
+
+* To sign off on a commit you simply use the `--signoff` (or `-s`) option when committing your changes:
+  ```bash
+  $ git commit -s -m "Add cool feature."
+  ```
+  This will append the following to your commit message:
+  ```
+  Signed-off-by: Your Name <your@email.com>
+  ```
+
+* Full text of the DCO (https://developercertificate.org/):
+
+  ```
+    Developer Certificate of Origin
+    Version 1.1
+
+    Copyright (C) 2004, 2006 The Linux Foundation and its contributors.
+
+    Everyone is permitted to copy and distribute verbatim copies of this
+    license document, but changing it is not allowed.
+
+
+    Developer's Certificate of Origin 1.1
+
+    By making a contribution to this project, I certify that:
+
+    (a) The contribution was created in whole or in part by me and I
+        have the right to submit it under the open source license
+        indicated in the file; or
+
+    (b) The contribution is based upon previous work that, to the best
+        of my knowledge, is covered under an appropriate open source
+        license and I have the right under that license to submit that
+        work with modifications, whether created in whole or in part
+        by me, under the same open source license (unless I am
+        permitted to submit under a different license), as indicated
+        in the file; or
+
+    (c) The contribution was provided directly to me by some other
+        person who certified (a), (b) or (c) and I have not modified
+        it.
+
+    (d) I understand and agree that this project and the contribution
+        are public and that a record of the contribution (including all
+        personal information I submit with it, including my sign-off) is
+        maintained indefinitely and may be redistributed consistent with
+        this project or the open source license(s) involved.
+  ```
